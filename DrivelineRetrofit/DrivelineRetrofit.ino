@@ -2,27 +2,38 @@
 #include <Wire.h>
 #include <SD.h>
 #include <FlexCAN_T4.h>
-//----------------------------------------------------------------------------//
+#include <HX711_ADC.h>
+//----------------------------------------------------------------------------//\
 
 
 //----------------------------------------------------------------------------//
 #define INTERVAL      15 // ms
-#define ADC_PIN_COUNT 6
-
 #define CAN_BAUDRATE 500000 // 500 kbps
-
-#define ADC_RESOLUTION 10 // bits
-
 #define MSG_ID 0x18FF50E5 // Extended 29 bit ID
-
 #define SD_CARD_FILE_NAME "dline.csv"
-
 #define LED_PIN 13
+//----------------------------------------------------------------------------//
 
-const uint8_t ADC_PINS[ADC_PIN_COUNT] = {14, 15, 16, 17, 18, 19};
+
+//----------------------------------------------------------------------------//
+const int DOUT_FRONT = 3;
+const int CLOCK_FRONT = 2;
+const int DOUT_REAR = 4;
+const int CLOCK_REAR = 5;
+
+HX711_ADC loadFront(DOUT_FRONT, CLOCK_FRONT);
+HX711_ADC loadRear(DOUT_REAR, CLOCK_REAR);
+
+float calibFront = 2843.8;
+float calibRear = 2900.5;
+
+long tareFront = 0;
+long tareRear = 0;
+
+const int smoothSamples = 5;
+//----------------------------------------------------------------------------//
 
 FlexCAN_T4<CAN3, RX_SIZE_256, TX_SIZE_16> can;
-
 unsigned long g_previousMillis = 0;
 bool g_ledState = false;
 bool g_sdCardInitialized = false;
@@ -32,22 +43,41 @@ bool g_sdCardInitialized = false;
 //----------------------------------------------------------------------------//
 void setup()
 {
+	// Initialize serial
   	Serial.begin(115200);
-
 	Serial.println("Driveline Retrofit Board Starting...");
-
+	
+	// Initialize HX711 load cells -------------------------------------------//
+	Serial.println("Initializing HX711 load cells...");
+	loadFront.begin();
+	loadRear.begin();
+	delay(200); // Allow HX711 to settle
+	
+	// Tare load cells -------------------------------------------------------//
+	Serial.println("Taring load cells...");
+	loadFront.start(2000);
+	while (!loadFront.update()) {
+		// Wait for tare to complete
+	}
+	tareFront = loadFront.getData();
+	
+	loadRear.start(2000);
+	while (!loadRear.update()) {
+		// Wait for tare to complete
+	}
+	tareRear = loadRear.getData();
+	Serial.println("Tare complete.");
+	
+	// Initialize CAN bus ----------------------------------------------------//
 	Serial.println("Initializing CAN...");
 	can.begin();
 	can.setBaudRate(CAN_BAUDRATE);
-
-
+	
+	// Configure pins --------------------------------------------------------//
 	Serial.println("Configuring pins...");
 	pinMode(LED_PIN, OUTPUT);
-
-	for (uint8_t i = 0; i < ADC_PIN_COUNT; i++) {
-		pinMode(ADC_PINS[i], INPUT);
-	}
-
+	
+	// Initialize SD card ----------------------------------------------------//
 	Serial.println("Initializing SD card...");
 	if (!SD.begin(BUILTIN_SDCARD)) {
 		Serial.println("Card failed, or not present.");
@@ -56,12 +86,10 @@ void setup()
 		Serial.println("Card initialized.");
 		g_sdCardInitialized = true;
 	}
-
 	Serial.println("Setup complete.");
 }
+
 //----------------------------------------------------------------------------//
-
-
 //----------------------------------------------------------------------------//
 void loop() {
 	// Interval timing -------------------------------------------------------//
@@ -72,26 +100,48 @@ void loop() {
 	g_previousMillis = millis();
 	Serial.print("Interval: ");
 	Serial.println(diff);
-
-	// Read ADC channels -----------------------------------------------------//
-	int readings[ADC_PIN_COUNT] = { 0 };
-	for (uint8_t i = 0; i < ADC_PIN_COUNT; i++) {
-		readings[i] = analogRead(ADC_PINS[i]);
+	
+	// Read HX711 load cells with smoothing ----------------------------------//
+	long rawFrontSum = 0;
+	long rawRearSum = 0;
+	
+	for (int i = 0; i < smoothSamples; i++) {
+		loadFront.update();
+		loadRear.update();
+		rawFrontSum += loadFront.getData();
+		rawRearSum += loadRear.getData();
 	}
-
-	// Pack ADC readings into CAN message ------------------------------------//
+	
+	// Average readings
+	long rawFrontAvg = rawFrontSum / smoothSamples;
+	long rawRearAvg = rawRearSum / smoothSamples;
+	
+	// Convert to Newtons
+	float forceFront = (rawFrontAvg - tareFront) / calibFront;
+	float forceRear = (rawRearAvg - tareRear) / calibRear;
+	
+	// Convert force values to integers for CAN packing (scale as needed)
+	// You may want to adjust scaling factor based on your force range
+	int16_t forceFrontInt = (int16_t)(forceFront * 100); // 0.01 N resolution
+	int16_t forceRearInt = (int16_t)(forceRear * 100);   // 0.01 N resolution
+	
+	// Pack force readings into CAN message ----------------------------------//
 	uint8_t msgData[8] = { 0 };
-	uint16_t bitPos = 0;
-	for (uint8_t i = 0; i < ADC_PIN_COUNT; i++) {
-		uint16_t val = readings[i];
-		for (uint8_t b = 0; b < ADC_RESOLUTION; b++) {
-			if (val & (1 << b)) {
-				msgData[bitPos / 8] |= (1 << (bitPos % 8));
-			}
-			bitPos++;
-		}
-	}
-
+	
+	// Pack front force (16 bits)
+	msgData[0] = forceFrontInt & 0xFF;
+	msgData[1] = (forceFrontInt >> 8) & 0xFF;
+	
+	// Pack rear force (16 bits)
+	msgData[2] = forceRearInt & 0xFF;
+	msgData[3] = (forceRearInt >> 8) & 0xFF;
+	
+	// Remaining 4 bytes available for future use or additional sensors
+	msgData[4] = 0;
+	msgData[5] = 0;
+	msgData[6] = 0;
+	msgData[7] = 0;
+	
 	// Send CAN message ------------------------------------------------------//
 	CAN_message_t msg;
 	msg.id = MSG_ID;
@@ -99,23 +149,22 @@ void loop() {
 	memcpy(msg.buf, msgData, 8);
 	msg.flags.extended = true;
 	can.write(msg);
-
+	
 	// Log to SD card if initialized -----------------------------------------//
 	if (g_sdCardInitialized) {
 		File logFile = SD.open(SD_CARD_FILE_NAME, FILE_WRITE);
 		if (logFile) {
 			logFile.print(millis());
-			for (uint8_t i = 0; i < ADC_PIN_COUNT; i++) {
-				logFile.print(",");
-				logFile.print(readings[i]);
-			}
-			logFile.println();
+			logFile.print(",");
+			logFile.print(forceFront, 3);
+			logFile.print(",");
+			logFile.println(forceRear, 3);
 			logFile.close();
 		} else {
 			Serial.println("Error opening log file.");
 		}
 	}
-
+	
 	// Toggle LED state ------------------------------------------------------//
   	g_ledState = !g_ledState;
   	digitalWrite(LED_PIN, g_ledState);
