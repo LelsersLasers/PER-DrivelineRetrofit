@@ -57,8 +57,7 @@ void setup()
 		g_sdCardInitialized = true;
 	}
 
-
-
+	Serial.println("Setup complete.");
 }
 //----------------------------------------------------------------------------//
 
