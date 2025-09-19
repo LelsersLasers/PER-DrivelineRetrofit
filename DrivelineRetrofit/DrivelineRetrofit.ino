@@ -119,6 +119,6 @@ void loop() {
 
 	// Toggle LED state ------------------------------------------------------//
   	g_ledState = !g_ledState;
-  	digitalWrite(LED_PIN, led);
+  	digitalWrite(LED_PIN, g_ledState);
 }
 //----------------------------------------------------------------------------//
