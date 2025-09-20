@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <SD.h>
-#include <FlexCAN_T4.h>
+// #include <FlexCAN_T4.h>
 #include <HX711_ADC.h>
 //----------------------------------------------------------------------------//
 
