@@ -27,8 +27,8 @@ HX711_ADC loadRear (DOUT_REAR,  SCK_REAR);
 float CALIB_FRONT = 2800.0;
 float CALIB_REAR  = -380.880615;
 
-long TARE_FRONT = 0;
-long TARE_REAR = 0;
+long g_tareFront = 0;
+long g_tareRear = 0;
 
 const int SMOOTH_SAMPLES = 5;
 //----------------------------------------------------------------------------//
@@ -59,13 +59,17 @@ void setup()
 	while (!loadFront.update()) {
 		// Wait for tare to complete
 	}
-	TARE_FRONT = loadFront.getData();
+	g_tareFront = loadFront.getData();
+	Serial.print("Front tare: ");
+	Serial.println(g_tareFront);
 	
 	loadRear.start(2000);
 	while (!loadRear.update()) {
 		// Wait for tare to complete
 	}
-	TARE_REAR = loadRear.getData();
+	g_tareRear = loadRear.getData();
+	Serial.print("Rear tare: ");
+	Serial.println(g_tareRear);
 	Serial.println("Tare complete.");
 	
 	// Initialize CAN bus ----------------------------------------------------//
@@ -117,8 +121,8 @@ void loop() {
 	long rawRearAvg = rawRearSum / SMOOTH_SAMPLES;
 	
 	// Convert to Newtons
-	float forceFront = (rawFrontAvg - TARE_FRONT) / CALIB_FRONT;
-	float forceRear = (rawRearAvg - TARE_REAR) / CALIB_REAR;
+	float forceFront = (rawFrontAvg - g_tareFront) / CALIB_FRONT;
+	float forceRear = (rawRearAvg - g_tareRear) / CALIB_REAR;
 
 	// Serial print for debugging --------------------------------------------//
 	Serial.print("Time (ms): ");
