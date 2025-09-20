@@ -16,16 +16,16 @@
 
 
 //----------------------------------------------------------------------------//
-const int DOUT_FRONT = 3;
-const int CLOCK_FRONT = 2;
-const int DOUT_REAR = 4;
-const int CLOCK_REAR = 5;
+const int DOUT_FRONT = 2;
+const int SCK_FRONT  = 4;
+const int DOUT_REAR  = 6;
+const int SCK_REAR   = 8;
 
-HX711_ADC loadFront(DOUT_FRONT, CLOCK_FRONT);
-HX711_ADC loadRear(DOUT_REAR, CLOCK_REAR);
+HX711_ADC loadFront(DOUT_FRONT, SCK_FRONT);
+HX711_ADC loadRear (DOUT_REAR,  SCK_REAR);
 
-float calibFront = 2843.8;
-float calibRear = 2900.5;
+float calibFront = 2800.0;
+float calibRear  = -380.880615;
 
 long tareFront = 0;
 long tareRear = 0;
