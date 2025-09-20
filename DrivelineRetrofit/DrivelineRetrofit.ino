@@ -119,6 +119,14 @@ void loop() {
 	// Convert to Newtons
 	float forceFront = (rawFrontAvg - TARE_FRONT) / CALIB_FRONT;
 	float forceRear = (rawRearAvg - TARE_REAR) / CALIB_REAR;
+
+	// Serial print for debugging --------------------------------------------//
+	Serial.print("Time (ms): ");
+	Serial.print(millis());
+	Serial.print(", Force Front (N): ");
+	Serial.print(forceFront, 3);
+	Serial.print(", Force Rear (N): ");
+	Serial.println(forceRear, 3);
 	
 	// // Convert force values to integers for CAN packing (scale as needed)
 	// // You may want to adjust scaling factor based on your force range
