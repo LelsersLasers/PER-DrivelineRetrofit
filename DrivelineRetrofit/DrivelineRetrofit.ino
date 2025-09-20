@@ -27,8 +27,11 @@ HX711_ADC loadRear (DOUT_REAR,  SCK_REAR);
 float CALIB_FRONT = 2800.0;
 float CALIB_REAR  = -380.880615;
 
-double g_tareFront = 0;
-double g_tareRear = 0;
+const float KNOWN_MASS_KG = 11.3398f;
+const float GRAVITY = 9.80665f;
+
+float g_tareFront = 0;
+float g_tareRear = 0;
 
 const int SMOOTH_SAMPLES = 5;
 //----------------------------------------------------------------------------//
@@ -106,23 +109,26 @@ void loop() {
 	Serial.println(diff);
 	
 	// Read HX711 load cells with smoothing ----------------------------------//
-	double rawFrontSum = 0;
-	double rawRearSum = 0;
+	// double rawFrontSum = 0;
+	// double rawRearSum = 0;
 	
-	for (int i = 0; i < SMOOTH_SAMPLES; i++) {
-		loadFront.update();
-		loadRear.update();
-		rawFrontSum += loadFront.getData();
-		rawRearSum += loadRear.getData();
-	}
+	// for (int i = 0; i < SMOOTH_SAMPLES; i++) {
+	// 	loadFront.update();
+	// 	loadRear.update();
+	// 	rawFrontSum += loadFront.getData();
+	// 	rawRearSum += loadRear.getData();
+	// }
 	
 	// Average readings
-	double rawFrontAvg = rawFrontSum / SMOOTH_SAMPLES;
-	double rawRearAvg = rawRearSum / SMOOTH_SAMPLES;
+	// double rawFrontAvg = rawFrontSum / SMOOTH_SAMPLES;
+	// double rawRearAvg = rawRearSum / SMOOTH_SAMPLES;
+
+	float rawFront = loadFront.getData();
+	float rawRear  = loadRear.getData();
 	
 	// Convert to Newtons
-	double forceFront = (rawFrontAvg - g_tareFront) / CALIB_FRONT;
-	double forceRear = (rawRearAvg - g_tareRear) / CALIB_REAR;
+	float forceFront = (rawFront - g_tareFront) / CALIB_FRONT;
+	float forceRear = (rawRear - g_tareRear) / CALIB_REAR;
 
 	// Serial print for debugging --------------------------------------------//
 	Serial.print("Time (ms): ");
