@@ -7,7 +7,7 @@
 
 
 //----------------------------------------------------------------------------//
-#define INTERVAL      15 // ms
+#define INTERVAL      10 // ms
 // #define CAN_BAUDRATE 500000 // 500 kbps
 // #define MSG_ID 0x18FF50E5 // Extended 29 bit ID
 #define SD_CARD_FILE_NAME "dline.csv"
@@ -27,11 +27,11 @@ HX711_ADC loadRear (DOUT_REAR,  SCK_REAR);
 float CALIB_FRONT = 2800.0;
 float CALIB_REAR  = -380.880615;
 
-const float KNOWN_MASS_KG = 11.3398f;
-const float GRAVITY = 9.80665f;
+// const float KNOWN_MASS_KG = 11.3398f;
+// const float GRAVITY = 9.80665f;
 
-float g_tareFront = 0;
-float g_tareRear = 0;
+float g_tareFront = 0.0;
+float g_tareRear = 0.0;
 
 const int SMOOTH_SAMPLES = 5;
 //----------------------------------------------------------------------------//
@@ -123,6 +123,8 @@ void loop() {
 	// double rawFrontAvg = rawFrontSum / SMOOTH_SAMPLES;
 	// double rawRearAvg = rawRearSum / SMOOTH_SAMPLES;
 
+	loadFront.update();
+	loadRear.update();
 	float rawFront = loadFront.getData();
 	float rawRear  = loadRear.getData();
 	
