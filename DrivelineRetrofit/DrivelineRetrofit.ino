@@ -7,7 +7,7 @@
 
 
 //----------------------------------------------------------------------------//
-#define INTERVAL      10 // ms
+#define INTERVAL      15 // ms
 // #define CAN_BAUDRATE 500000 // 500 kbps
 // #define MSG_ID 0x18FF50E5 // Extended 29 bit ID
 #define SD_CARD_FILE_NAME "dline.csv"
@@ -135,9 +135,9 @@ void loop() {
 	// Serial print for debugging --------------------------------------------//
 	Serial.print("Time (ms): ");
 	Serial.print(millis());
-	Serial.print(", Force Front (N): ");
+	Serial.print(", Front: ");
 	Serial.print(forceFront, 3);
-	Serial.print(", Force Rear (N): ");
+	Serial.print(", Force Rear: ");
 	Serial.println(forceRear, 3);
 	
 	// // Convert force values to integers for CAN packing (scale as needed)
