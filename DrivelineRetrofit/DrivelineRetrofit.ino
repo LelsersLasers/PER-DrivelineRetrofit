@@ -16,24 +16,43 @@
 
 
 //----------------------------------------------------------------------------//
-const int DOUT_FRONT = 2;
-const int SCK_FRONT  = 4;
-const int DOUT_REAR  = 6;
-const int SCK_REAR   = 8;
+const int DOUT_FRONT_LEFT = 2;
+const int SCK_FRONT_LEFT  = 4;
+const int DOUT_REAR_LEFT  = 6;
+const int SCK_REAR_LEFT   = 8;
 
-HX711_ADC loadFront(DOUT_FRONT, SCK_FRONT);
-HX711_ADC loadRear (DOUT_REAR,  SCK_REAR);
+const int DOUT_FRONT_RIGHT = 9;
+const int SCK_FRONT_RIGHT  = 10;
+const int DOUT_REAR_RIGHT  = 14;
+const int SCK_REAR_RIGHT   = 15;
 
-float CALIB_FRONT = 2800.0;
-float CALIB_REAR  = -380.880615;
+HX711_ADC loadFrontLeft(DOUT_FRONT_LEFT, SCK_FRONT_LEFT);
+HX711_ADC loadRearLeft(DOUT_REAR_LEFT,  SCK_REAR_LEFT);
+
+HX711_ADC loadFrontRight(DOUT_FRONT_RIGHT, SCK_FRONT_RIGHT);
+HX711_ADC loadRearRight(DOUT_REAR_RIGHT,  SCK_REAR_RIGHT);
+
+// float CALIB_FRONT_LEFT = -376.11;
+// float CALIB_REAR_LEFT  = -380.880615;
+
+// float CALIB_FRONT_RIGHT = -571.0;
+// float CALIB_REAR_RIGHT  = -766.15;
+float CALIB_FRONT_LEFT = 1.0;
+float CALIB_REAR_LEFT  = 1.0;
+
+float CALIB_FRONT_RIGHT = 1.0;
+float CALIB_REAR_RIGHT  = 1.0;
 
 // const float KNOWN_MASS_KG = 11.3398f;
 // const float GRAVITY = 9.80665f;
 
-float g_tareFront = 0.0;
-float g_tareRear = 0.0;
+float g_tareFrontLeft = 0.0;
+float g_tareRearLeft = 0.0;
 
-const int SMOOTH_SAMPLES = 5;
+float g_tareFrontRight= 0.0;
+float g_tareRearRight = 0.0;
+
+// const int SMOOTH_SAMPLES = 5;
 //----------------------------------------------------------------------------//
 
 // FlexCAN_T4<CAN3, RX_SIZE_256, TX_SIZE_16> can;
@@ -52,28 +71,47 @@ void setup()
 	
 	// Initialize HX711 load cells -------------------------------------------//
 	Serial.println("Initializing HX711 load cells...");
-	loadFront.begin();
-	loadRear.begin();
+	loadFrontLeft.begin();
+	loadRearLeft.begin();
+	loadFrontRight.begin();
+	loadRearRight.begin();
 	delay(200); // Allow HX711 to settle
 	
 	// Tare load cells -------------------------------------------------------//
-	Serial.println("Taring load cells...");
-	loadFront.start(2000);
-	while (!loadFront.update()) {
-		// Wait for tare to complete
-	}
-	g_tareFront = loadFront.getData();
-	Serial.print("Front tare: ");
-	Serial.println(g_tareFront, 3);
+	// Serial.println("Taring load cells...");
+	// loadFrontLeft.start(2000);
+	// while (!loadFrontLeft.update()) {
+	// 	// Wait for tare to complete
+	// }
+	// g_tareFrontLeft = loadFrontLeft.getData();
+	// Serial.print("Front Left tare: ");
+	// Serial.println(g_tareFrontLeft, 3);
 	
-	loadRear.start(2000);
-	while (!loadRear.update()) {
-		// Wait for tare to complete
-	}
-	g_tareRear = loadRear.getData();
-	Serial.print("Rear tare: ");
-	Serial.println(g_tareRear, 3);
-	Serial.println("Tare complete.");
+	// loadRearLeft.start(2000);
+	// while (!loadRearLeft.update()) {
+	// 	// Wait for tare to complete
+	// }
+	// g_tareRearLeft = loadRearLeft.getData();
+	// Serial.print("Rear Left tare: ");
+	// Serial.println(g_tareRearLeft, 3);
+
+	// loadFrontRight.start(2000);
+	// while (!loadFrontRight.update()) {
+	// 	// Wait for tare to complete
+	// }
+	// g_tareFrontRight = loadFrontRight.getData();
+	// Serial.print("Front Right tare: ");
+	// Serial.println(g_tareFrontRight, 3);
+
+	// loadRearRight.start(2000);
+	// while (!loadRearRight.update()) {
+	// 	// Wait for tare to complete
+	// }
+	// g_tareRearRight = loadRearRight.getData();
+	// Serial.print("Rear Right tare: ");
+	// Serial.println(g_tareRearRight, 3);
+
+	// Serial.println("Tare complete.");
 	
 	// Initialize CAN bus ----------------------------------------------------//
 	// Serial.println("Initializing CAN...");
@@ -93,6 +131,7 @@ void setup()
 		Serial.println("Card initialized.");
 		g_sdCardInitialized = true;
 	}
+
 	Serial.println("Setup complete.");
 }
 
@@ -123,22 +162,32 @@ void loop() {
 	// double rawFrontAvg = rawFrontSum / SMOOTH_SAMPLES;
 	// double rawRearAvg = rawRearSum / SMOOTH_SAMPLES;
 
-	loadFront.update();
-	loadRear.update();
-	float rawFront = loadFront.getData();
-	float rawRear  = loadRear.getData();
+	loadFrontLeft.update();
+	loadRearLeft.update();
+	loadFrontRight.update();
+	loadRearRight.update();
+	float rawFrontLeft = loadFrontLeft.getData();
+	float rawRearLeft  = loadRearLeft.getData();
+	float rawFrontRight = loadFrontRight.getData();
+	float rawRearRight = loadRearRight.getData();
 	
 	// Convert to Newtons
-	float forceFront = (rawFront - g_tareFront) / CALIB_FRONT;
-	float forceRear = (rawRear - g_tareRear) / CALIB_REAR;
+	float forceFrontLeft = (rawFrontLeft - g_tareFrontLeft) / CALIB_FRONT_LEFT;
+	float forceRearLeft = (rawRearLeft - g_tareRearLeft) / CALIB_REAR_LEFT;
+	float forceFrontRight = (rawFrontRight - g_tareFrontRight) / CALIB_FRONT_RIGHT;
+	float forceRearRight = (rawRearRight - g_tareRearRight) / CALIB_REAR_RIGHT;
 
 	// Serial print for debugging --------------------------------------------//
 	Serial.print("Time (ms): ");
 	Serial.print(millis());
-	Serial.print(", Front: ");
-	Serial.print(forceFront, 3);
-	Serial.print(", Force Rear: ");
-	Serial.println(forceRear, 3);
+	Serial.print(", Front Left: ");
+	Serial.print(forceFrontLeft, 3);
+	Serial.print(", Rear Left: ");
+	Serial.println(forceRearLeft, 3);
+	Serial.print(", Front Right: ");
+	Serial.print(forceFrontRight, 3);
+	Serial.print(", Rear Right: ");
+	Serial.println(forceRearRight, 3);
 	
 	// // Convert force values to integers for CAN packing (scale as needed)
 	// // You may want to adjust scaling factor based on your force range
@@ -176,9 +225,13 @@ void loop() {
 		if (logFile) {
 			logFile.print(millis());
 			logFile.print(",");
-			logFile.print(forceFront, 3);
+			logFile.print(forceFrontLeft, 3);
 			logFile.print(",");
-			logFile.println(forceRear, 3);
+			logFile.print(forceRearLeft, 3);
+			logFile.print(",");
+			logFile.print(forceFrontRight, 3);
+			logFile.print(",");
+			logFile.println(forceRearRight, 3);
 			logFile.close();
 		} else {
 			Serial.println("Error opening log file.");
@@ -190,3 +243,8 @@ void loop() {
   	digitalWrite(LED_PIN, g_ledState);
 }
 //----------------------------------------------------------------------------//
+
+
+
+
+
